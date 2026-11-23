@@ -76,7 +76,7 @@ function renderEstimate(d) {
   function showOffer() {
     offerArea.replaceChildren();
     if (!chosen) { offerArea.append(el('p', {class: 'muted'}, L('Choose a package to see its details.', 'Choisissez une option pour en voir les détails.'))); return; }
-    const t = chosen.totals, rows = [[L('Subtotal', 'Sous-total'), money(t.subtotal, c.currency, FR)], [L('Tax', 'Taxes') + (Number(chosen.tax) ? ' (' + chosen.tax + ' %)' : ''), money(t.tax, c.currency, FR)], [L('Total', 'Total'), money(t.total, c.currency, FR), true]];
+    const t = chosen.totals, rows = [[L('Subtotal', 'Sous-total'), money(t.subtotal, c.currency, FR)], [L('Tax', 'Taxes') + (Number(chosen.tax) ? ' (' + (FR ? String(chosen.tax).replace('.', ',') + ' %' : chosen.tax + '%') + ')' : ''), money(t.tax, c.currency, FR)], [L('Total', 'Total'), money(t.total, c.currency, FR), true]];
     offerArea.append(el('div', {class: 'card'}, chosen.package ? el('h2', {}, chosen.package.name) : el('h2', {}, L('Price', 'Prix')), chosen.package?.description ? el('p', {class: 'pre muted'}, chosen.package.description) : null,
       linesTable(chosen.lines, c.currency), totalsBlock(rows),
       chosen.deposit ? el('p', {}, el('strong', {}, L('Deposit on approval: ', 'Acompte à l’approbation : ') + money(chosen.deposit.cents, c.currency, FR))) : null));

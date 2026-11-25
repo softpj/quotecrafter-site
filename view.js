@@ -107,7 +107,7 @@ function renderEstimate(d) {
         el('p', {}, L('Your approval is ready. Nothing has been sent yet. Send it to ', 'Votre approbation est prête. Rien n’a encore été envoyé. Envoyez-la à ') + d.seller.name + L(' so they can record it:', ' pour qu’elle puisse être enregistrée :')),
         el('div', {class: 'row'},
           el('a', {class: 'btn', href: 'mailto:' + encodeURIComponent(d.seller.email) + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(summary)}, L('Send by email', 'Envoyer par courriel')),
-          d.seller.phone ? el('a', {class: 'btn ghost', href: 'sms:' + d.seller.phone.replace(/[^0-9+]/g, '') + '&body=' + encodeURIComponent(summary)}, L('Send by text', 'Envoyer par texto')) : null,
+          d.seller.phone ? el('a', {class: 'btn ghost', href: 'sms:' + d.seller.phone.replace(/[^0-9+]/g, '') + '?&body=' + encodeURIComponent(summary)}, L('Send by text', 'Envoyer par texto')) : null,
           el('button', {class: 'ghost', onclick: async e => { try { await navigator.clipboard.writeText(summary); e.target.textContent = L('Copied', 'Copiée'); } catch { e.target.textContent = L('Copy failed', 'Échec de la copie'); } }}, L('Copy approval', 'Copier l’approbation'))),
         el('p', {class: 'muted'}, L('Keep this page open until you have sent it.', 'Gardez cette page ouverte jusqu’à l’envoi.')));
       approveArea.classList.add('ok');
@@ -146,7 +146,7 @@ function renderInvoice(d) {
       el('p', {class: 'muted'}, L('Issued ', 'Émise le ') + day(d.issuedOn) + L(' · Due ', ' · Échéance le ') + day(d.dueOn)), sellerBlock(d.seller)),
     t.balance > 0 && pay.length ? el('div', {class: 'card'}, el('h2', {}, L('How to pay', 'Comment payer')), pay, el('p', {class: 'muted'}, FR ? 'Les paiements sont versés directement à ' + d.seller.name + '. Indiquez ' + d.number + ' comme référence.' : 'Payments go directly to ' + d.seller.name + '. Include ' + d.number + ' as the reference.')) : null,
     el('div', {class: 'card'}, el('h2', {}, L('Details', 'Détails')), linesTable(d.lines, d.currency),
-      totalsBlock([[L('Subtotal', 'Sous-total'), money(t.subtotal, d.currency, FR)], [L('Tax', 'Taxes'), money(t.tax, d.currency, FR)], [L('Total', 'Total'), money(t.total, d.currency, FR)], ...(t.paid ? [[L('Paid', 'Payé'), '−' + money(t.paid, d.currency, FR)]] : []), [L('Balance due', 'Solde dû'), money(t.balance, d.currency, FR), true]]),
+      totalsBlock([[L('Subtotal', 'Sous-total'), money(t.subtotal, d.currency, FR)], [L('Tax', 'Taxes'), money(t.tax, d.currency, FR)], [L('Total', 'Total'), money(t.total, d.currency, FR)], ...(t.credits > 0 ? [[L('Credit notes', 'Notes de crédit'), '−' + money(t.credits, d.currency, FR)]] : []), ...(t.paid ? [[L('Paid', 'Payé'), '−' + money(t.paid, d.currency, FR)]] : []), [L('Balance due', 'Solde dû'), money(t.balance, d.currency, FR), true]]),
       d.notes ? el('p', {class: 'pre muted'}, d.notes) : null));
 }
 
@@ -191,7 +191,7 @@ function renderRequest(d) {
       el('p', {}, L('Nothing has been sent yet. Send it to ', 'Rien n’a encore été envoyé. Envoyez-la à ') + s.name + ':'),
       el('div', {class: 'row'},
         el('a', {class: 'btn', href: 'mailto:' + encodeURIComponent(s.email) + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body)}, L('Send by email', 'Envoyer par courriel')),
-        s.phone ? el('a', {class: 'btn ghost', href: 'sms:' + s.phone.replace(/[^0-9+]/g, '') + '&body=' + encodeURIComponent(body)}, L('Send by text', 'Envoyer par texto')) : null,
+        s.phone ? el('a', {class: 'btn ghost', href: 'sms:' + s.phone.replace(/[^0-9+]/g, '') + '?&body=' + encodeURIComponent(body)}, L('Send by text', 'Envoyer par texto')) : null,
         el('button', {class: 'ghost', onclick: async e => { try { await navigator.clipboard.writeText(body); e.target.textContent = L('Copied', 'Copiée'); } catch { e.target.textContent = L('Copy failed', 'Échec de la copie'); } }}, L('Copy request', 'Copier la demande'))),
       el('p', {class: 'muted'}, L('Photos help: attach a few to the email or text before you send it.', 'Des photos aident : joignez-en quelques-unes au courriel ou au texto avant l’envoi.'))));
     done.scrollIntoView({behavior: 'smooth', block: 'start'});

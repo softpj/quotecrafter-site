@@ -1,4 +1,4 @@
-import {readFragment, rebuildScope, packStrokes, approvalFragment, sha256Hex, money} from './view-core.js';
+import {readFragment, rebuildScope, packStrokes, approvalFragment, leadFragment, requestId, sha256Hex, money} from './view-core.js';
 
 const app = document.getElementById('app');
 const colors = ['#AE3D28', '#173E37', '#243E65'];
@@ -158,12 +158,77 @@ function renderApproval(d, hash) {
     el('p', {}, el('a', {class: 'btn', href: 'quotecrafter://approval' + hash}, L('Record in QuoteCrafter', 'Enregistrer dans QuoteCrafter')))));
 }
 
+const timings = [['soon', 'As soon as possible', 'Dès que possible'], ['month', 'Within a month', 'D’ici un mois'], ['flexible', 'Flexible timing', 'Moment flexible'], ['planning', 'Just planning for now', 'Simple planification pour l’instant']];
+const contacts = [['email', 'Email', 'Courriel'], ['phone', 'Phone call', 'Appel'], ['sms', 'Text message', 'Texto']];
+
+function renderRequest(d) {
+  brand(d.seller);
+  const s = d.seller;
+  document.title = L('Request a quote · ', 'Demander une soumission · ') + s.name;
+  const field = (label, input, hint) => el('p', {}, el('label', {}, label, hint ? el('span', {class: 'muted'}, ' ' + hint) : null, input));
+  const text = (name, max, auto, type = 'text') => el('input', {type, name, maxlength: String(max), autocomplete: auto});
+  const name = text('name', 160, 'name'), email = text('email', 254, 'email', 'email'), phone = text('phone', 80, 'tel', 'tel');
+  const address = el('textarea', {name: 'address', maxlength: '600', rows: '2', autocomplete: 'street-address'});
+  const title = text('title', 200, 'off'), scope = el('textarea', {name: 'scope', maxlength: '2000', rows: '5'});
+  const radios = (group, options, first) => el('div', {class: 'choices', role: 'radiogroup'}, options.map(([value, en, fr], i) => el('label', {class: 'choice'}, el('input', {type: 'radio', name: group, value, checked: i === first}), el('span', {}, L(en, fr)))));
+  const timing = radios('timing', timings, 2), contact = radios('contact', contacts, 0);
+  const pick = group => document.querySelector('input[name=' + group + ']:checked')?.value || '';
+  const send = el('button', {}, L('Prepare my request', 'Préparer ma demande')), error = el('p', {class: 'error', role: 'alert'}), done = el('div');
+  send.addEventListener('click', () => {
+    error.textContent = '';
+    const v = {name: name.value.trim(), email: email.value.trim(), phone: phone.value.trim(), address: address.value.trim(), title: title.value.trim(), scope: scope.value.trim(), timing: pick('timing'), contact: pick('contact')};
+    if (!v.name) return void (error.textContent = L('Add your name.', 'Indiquez votre nom.'));
+    if (!v.email && !v.phone) return void (error.textContent = L('Add an email address or a phone number so ' + s.name + ' can reply.', 'Indiquez un courriel ou un numéro de téléphone pour que ' + s.name + ' puisse vous répondre.'));
+    if (v.email && !/^\S+@\S+\.\S+$/.test(v.email)) return void (error.textContent = L('Check the email address.', 'Vérifiez l’adresse courriel.'));
+    if (v.contact === 'email' && !v.email || v.contact !== 'email' && !v.phone) v.contact = v.email ? 'email' : 'phone';
+    if (!v.title) return void (error.textContent = L('Say briefly what work you need.', 'Décrivez brièvement les travaux souhaités.'));
+    const at = new Date().toISOString(), link = location.origin + location.pathname + leadFragment({...(FR ? {lang: 'fr'} : {}), rid: requestId(), ...v, at});
+    const when = timings.find(t => t[0] === v.timing), how = contacts.find(c => c[0] === v.contact);
+    const body = [L('Quote request: ', 'Demande de soumission : ') + v.title, '', v.scope, '', L('Name: ', 'Nom : ') + v.name, v.email ? L('Email: ', 'Courriel : ') + v.email : '', v.phone ? L('Phone: ', 'Téléphone : ') + v.phone : '', v.address ? L('Work site: ', 'Lieu des travaux : ') + v.address : '',
+      when ? L('Timing: ', 'Échéancier : ') + L(when[1], when[2]) : '', how ? L('Best way to reach me: ', 'Me joindre de préférence par : ') + L(how[1], how[2]) : '', '', L('QuoteCrafter users: open this link to add the request to Inquiries:', 'Utilisateurs de QuoteCrafter : ouvrez ce lien pour ajouter la demande aux demandes :'), link].filter((x, i, a) => x !== '' || a[i - 1] !== '').join('\n');
+    const subject = L('Quote request: ', 'Demande de soumission : ') + v.title;
+    put(done, el('div', {class: 'card ok'}, el('h2', {}, L('Last step: send your request', 'Dernière étape : envoyez votre demande')),
+      el('p', {}, L('Nothing has been sent yet. Send it to ', 'Rien n’a encore été envoyé. Envoyez-la à ') + s.name + ':'),
+      el('div', {class: 'row'},
+        el('a', {class: 'btn', href: 'mailto:' + encodeURIComponent(s.email) + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body)}, L('Send by email', 'Envoyer par courriel')),
+        s.phone ? el('a', {class: 'btn ghost', href: 'sms:' + s.phone.replace(/[^0-9+]/g, '') + '&body=' + encodeURIComponent(body)}, L('Send by text', 'Envoyer par texto')) : null,
+        el('button', {class: 'ghost', onclick: async e => { try { await navigator.clipboard.writeText(body); e.target.textContent = L('Copied', 'Copiée'); } catch { e.target.textContent = L('Copy failed', 'Échec de la copie'); } }}, L('Copy request', 'Copier la demande'))),
+      el('p', {class: 'muted'}, L('Photos help: attach a few to the email or text before you send it.', 'Des photos aident : joignez-en quelques-unes au courriel ou au texto avant l’envoi.'))));
+    done.scrollIntoView({behavior: 'smooth', block: 'start'});
+  });
+  put(app,
+    el('div', {class: 'card'}, el('p', {class: 'kicker'}, L('Request a quote', 'Demander une soumission')), el('h1', {}, s.name),
+      el('p', {}, L('Tell us about the work. Your request goes straight to ', 'Décrivez les travaux. Votre demande est envoyée directement à ') + s.name + L(' by email or text, from your own device.', ' par courriel ou texto, depuis votre propre appareil.')),
+      el('div', {class: 'muted'}, [s.email, s.phone].filter(Boolean).join(' · ')), httpsLink(s.website) ? el('div', {class: 'muted'}, el('a', {href: s.website.trim(), rel: 'noopener noreferrer'}, s.website.trim().replace(/^https:\/\//, ''))) : null),
+    el('div', {class: 'card form'},
+      field(L('What work do you need?', 'Quels travaux souhaitez-vous?'), title, L('for example “Replace the back deck”', 'par exemple « Remplacer la terrasse arrière »')),
+      field(L('Details', 'Détails'), scope, L('sizes, materials, anything we should know', 'dimensions, matériaux, tout ce qu’il faut savoir')),
+      el('p', {}, L('When would you like it done?', 'Pour quand souhaitez-vous les travaux?')), timing,
+      field(L('Work site address', 'Adresse des travaux'), address),
+      field(L('Your name', 'Votre nom'), name), field(L('Email', 'Courriel'), email), field(L('Phone', 'Téléphone'), phone),
+      el('p', {}, L('Best way to reach you', 'Comment vous joindre de préférence')), contact,
+      el('div', {class: 'row'}, send), error),
+    done);
+}
+
+function renderLead(d, hash) {
+  document.title = L('Quote request from ', 'Demande de soumission de ') + d.name;
+  put(app, el('div', {class: 'card ok'}, el('p', {class: 'kicker'}, L('New quote request', 'Nouvelle demande de soumission')), el('h1', {}, d.title || ''),
+    el('p', {}, L('From ', 'De ') + (d.name || '') + ' · ' + [d.email, d.phone].filter(Boolean).join(' · ')),
+    d.scope ? el('p', {class: 'pre'}, d.scope) : null, d.address ? el('p', {class: 'muted pre'}, L('Work site: ', 'Lieu des travaux : ') + d.address) : null,
+    el('p', {}, L('Open this page on the iPhone, iPad or Mac where you use QuoteCrafter, then tap the button to add it to Inquiries.', 'Ouvrez cette page sur l’iPhone, l’iPad ou le Mac où vous utilisez QuoteCrafter, puis touchez le bouton pour l’ajouter aux demandes.')),
+    el('p', {}, el('a', {class: 'btn', href: 'quotecrafter://lead' + hash}, L('Add to QuoteCrafter', 'Ajouter à QuoteCrafter')))));
+}
+
 addEventListener('hashchange', () => location.reload());
 try {
   const {kind, data} = readFragment(location.hash);
   FR = data.lang === 'fr';
-  if (FR) { document.documentElement.lang = 'fr-CA'; const foot = document.querySelector('.foot p'); if (foot) foot.firstChild.textContent = 'Cette page affiche un document contenu dans le lien lui-même. Il n’est enregistré sur aucun serveur et cette page n’effectue aucune requête réseau. '; }
-  if (kind === 'estimate') renderEstimate(data); else if (kind === 'invoice') renderInvoice(data); else renderApproval(data, location.hash);
+  if (FR) document.documentElement.lang = 'fr-CA';
+  const foot = document.querySelector('.foot p');
+  if (foot && kind === 'request') foot.firstChild.textContent = L('This page sends nothing itself: your request goes from your own email or messaging app. ', 'Cette page n’envoie rien elle-même : votre demande part de votre propre application de courriel ou de messagerie. ');
+  else if (foot && FR) foot.firstChild.textContent = 'Cette page affiche un document contenu dans le lien lui-même. Il n’est enregistré sur aucun serveur et cette page n’effectue aucune requête réseau. ';
+  if (kind === 'estimate') renderEstimate(data); else if (kind === 'invoice') renderInvoice(data); else if (kind === 'request') renderRequest(data); else if (kind === 'lead') renderLead(data, location.hash); else renderApproval(data, location.hash);
 } catch (e) {
   put(app, el('div', {class: 'card'}, el('h1', {}, L('This link can’t be opened', 'Ce lien ne peut pas être ouvert')), el('p', {}, e.message)));
 }

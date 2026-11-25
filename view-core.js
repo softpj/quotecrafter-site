@@ -15,14 +15,15 @@ export function fromBase64Url(value) {
   return dec.decode(Uint8Array.from(bin, c => c.charCodeAt(0)));
 }
 
-/** "#e1.…" estimate, "#i1.…" invoice, "#a1.…" a customer's approval on its way back to the business. */
+/** "#e1.…" estimate, "#i1.…" invoice, "#a1.…" a customer's approval on its way back to the business,
+ * "#r1.…" a business's request-a-quote form, "#l1.…" a customer's request on its way back to the business. */
 export function readFragment(hash) {
-  const m = /^#?([eia])1\.([A-Za-z0-9_-]{8,200000})$/.exec(hash || '');
+  const m = /^#?([eiarl])1\.([A-Za-z0-9_-]{8,200000})$/.exec(hash || '');
   if (!m) throw Error('This link is incomplete. Ask the business to send it again.');
   let data;
   try { data = JSON.parse(fromBase64Url(m[2])); } catch { throw Error('This link is damaged. Ask the business to send it again.'); }
   if (!data || data.v !== 1) throw Error('This link was made by a newer QuoteCrafter. Ask the business for a PDF instead.');
-  return {kind: {e: 'estimate', i: 'invoice', a: 'approval'}[m[1]], data};
+  return {kind: {e: 'estimate', i: 'invoice', a: 'approval', r: 'request', l: 'lead'}[m[1]], data};
 }
 
 /** The exact customer-facing scope the app signs (approvalScope): same keys, same order. */
@@ -43,6 +44,10 @@ export function unpackStrokes(text) {
 }
 
 export function approvalFragment(approval) { return '#a1.' + toBase64Url(JSON.stringify({v: 1, ...approval})); }
+export function leadFragment(lead) { return '#l1.' + toBase64Url(JSON.stringify({v: 1, ...lead})); }
+
+/** A short random reference so the same request opened twice is recorded once. */
+export function requestId() { return [...crypto.getRandomValues(new Uint8Array(8))].map(b => b.toString(16).padStart(2, '0')).join(''); }
 
 export async function sha256Hex(text) {
   const digest = await crypto.subtle.digest('SHA-256', enc.encode(text));

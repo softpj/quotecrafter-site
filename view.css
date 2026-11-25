@@ -33,3 +33,10 @@ button[disabled]{opacity:.45;cursor:not-allowed}
 .ok{background:#EAF2EC;border-color:#B9D3C0}
 .foot{max-width:760px;margin:0 auto;padding:4px 16px 32px;color:var(--muted);font-size:13px}
 .foot a{color:var(--muted)}
+textarea,input[type=email],input[type=tel]{width:100%;font:inherit;padding:12px;border:1px solid #C9BFAE;border-radius:8px;background:#fff}
+textarea{resize:vertical}
+.form label{display:block;font-weight:600}
+.form label input,.form label textarea{margin-top:6px;font-weight:400}
+.choices{display:flex;flex-wrap:wrap;gap:8px;margin:-4px 0 14px}
+.form label.choice{display:inline-flex;align-items:center;gap:8px;font-weight:500;border:1px solid #C9BFAE;border-radius:999px;padding:8px 14px;background:#fff;cursor:pointer;min-height:44px}
+.form label.choice input{margin:0}

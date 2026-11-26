@@ -57,3 +57,23 @@ export async function sha256Hex(text) {
 export function money(cents, currency, fr = false) {
   return new Intl.NumberFormat(fr ? 'fr-CA' : currency === 'USD' ? 'en-US' : 'en-CA', {style: 'currency', currency}).format(cents / 100) + ' ' + currency;
 }
+
+// GST and the provincial tax as separate lines, as on the app's PDFs (shared/salesTax.ts taxParts; a test keeps the two
+// the same). The province comes from the estimate's tax location; 14.975% alone can only be Quebec.
+const provinces = [
+  ['Quebec', '14.975', [['GST', 'TPS', '5'], ['QST', 'TVQ', '9.975']]],
+  ['British Columbia', '12', [['GST', 'TPS', '5'], ['PST', 'TVP', '7']]],
+  ['Manitoba', '12', [['GST', 'TPS', '5'], ['RST', 'TVD', '7']]],
+  ['Saskatchewan', '11', [['GST', 'TPS', '5'], ['PST', 'TVP', '6']]],
+];
+export function taxParts(rate, taxCents, location = '', currency = 'CAD') {
+  if (currency !== 'CAD' || !Number.isSafeInteger(taxCents) || taxCents < 0) return null;
+  const thousandths = Math.round(Number(rate) * 1000);
+  if (!Number.isFinite(thousandths) || thousandths <= 0) return null;
+  const place = String(location || '').trim().toLowerCase();
+  const match = provinces.find(([name, r]) => Math.round(Number(r) * 1000) === thousandths && place && place.includes(name.toLowerCase()))
+    || (thousandths === 14975 ? provinces[0] : null);
+  if (!match) return null;
+  const [[l1, f1, r1], [l2, f2, r2]] = match[2], first = Math.round(taxCents * Math.round(Number(r1) * 1000) / thousandths);
+  return [{label: l1, labelFr: f1, rate: r1, cents: first}, {label: l2, labelFr: f2, rate: r2, cents: taxCents - first}];
+}

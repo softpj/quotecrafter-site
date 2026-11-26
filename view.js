@@ -1,9 +1,16 @@
-import {readFragment, rebuildScope, packStrokes, approvalFragment, leadFragment, requestId, sha256Hex, money} from './view-core.js';
+import {readFragment, rebuildScope, packStrokes, approvalFragment, leadFragment, requestId, sha256Hex, money, taxParts} from './view-core.js';
 
 const app = document.getElementById('app');
 const colors = ['#AE3D28', '#173E37', '#243E65'];
 let FR = false;
 const L = (en, fr) => FR ? fr : en;
+const pct = rate => FR ? String(rate).replace('.', ',') + '\u00a0%' : rate + '%';
+// One "Tax" row, or GST and the provincial tax (QST, PST, RST) as separate rows where the province charges both.
+function taxRows(rate, cents, location, currency) {
+  const parts = taxParts(rate, cents, location, currency);
+  if (parts) return parts.map(p => [L(p.label, p.labelFr) + ' (' + pct(p.rate) + ')', money(p.cents, currency, FR)]);
+  return [[L('Tax', 'Taxes') + (Number(rate) ? ' (' + pct(rate) + ')' : ''), money(cents, currency, FR)]];
+}
 
 function el(tag, attrs = {}, ...kids) {
   const n = document.createElement(tag);
@@ -76,7 +83,7 @@ function renderEstimate(d) {
   function showOffer() {
     offerArea.replaceChildren();
     if (!chosen) { offerArea.append(el('p', {class: 'muted'}, L('Choose a package to see its details.', 'Choisissez une option pour en voir les détails.'))); return; }
-    const t = chosen.totals, rows = [[L('Subtotal', 'Sous-total'), money(t.subtotal, c.currency, FR)], [L('Tax', 'Taxes') + (Number(chosen.tax) ? ' (' + (FR ? String(chosen.tax).replace('.', ',') + ' %' : chosen.tax + '%') + ')' : ''), money(t.tax, c.currency, FR)], [L('Total', 'Total'), money(t.total, c.currency, FR), true]];
+    const t = chosen.totals, rows = [[L('Subtotal', 'Sous-total'), money(t.subtotal, c.currency, FR)], ...taxRows(chosen.tax, t.tax, det.taxLocation, c.currency), [L('Total', 'Total'), money(t.total, c.currency, FR), true]];
     offerArea.append(el('div', {class: 'card'}, chosen.package ? el('h2', {}, chosen.package.name) : el('h2', {}, L('Price', 'Prix')), chosen.package?.description ? el('p', {class: 'pre muted'}, chosen.package.description) : null,
       linesTable(chosen.lines, c.currency), totalsBlock(rows),
       chosen.deposit ? el('p', {}, el('strong', {}, L('Deposit on approval: ', 'Acompte à l’approbation : ') + money(chosen.deposit.cents, c.currency, FR))) : null));
@@ -146,7 +153,7 @@ function renderInvoice(d) {
       el('p', {class: 'muted'}, L('Issued ', 'Émise le ') + day(d.issuedOn) + L(' · Due ', ' · Échéance le ') + day(d.dueOn)), sellerBlock(d.seller)),
     t.balance > 0 && pay.length ? el('div', {class: 'card'}, el('h2', {}, L('How to pay', 'Comment payer')), pay, el('p', {class: 'muted'}, FR ? 'Les paiements sont versés directement à ' + d.seller.name + '. Indiquez ' + d.number + ' comme référence.' : 'Payments go directly to ' + d.seller.name + '. Include ' + d.number + ' as the reference.')) : null,
     el('div', {class: 'card'}, el('h2', {}, L('Details', 'Détails')), linesTable(d.lines, d.currency),
-      totalsBlock([[L('Subtotal', 'Sous-total'), money(t.subtotal, d.currency, FR)], [L('Tax', 'Taxes'), money(t.tax, d.currency, FR)], [L('Total', 'Total'), money(t.total, d.currency, FR)], ...(t.credits > 0 ? [[L('Credit notes', 'Notes de crédit'), '−' + money(t.credits, d.currency, FR)]] : []), ...(t.paid ? [[L('Paid', 'Payé'), '−' + money(t.paid, d.currency, FR)]] : []), [L('Balance due', 'Solde dû'), money(t.balance, d.currency, FR), true]]),
+      totalsBlock([[L('Subtotal', 'Sous-total'), money(t.subtotal, d.currency, FR)], ...taxRows(d.taxBp / 100, t.tax, '', d.currency), [L('Total', 'Total'), money(t.total, d.currency, FR)], ...(t.credits > 0 ? [[L('Credit notes', 'Notes de crédit'), '−' + money(t.credits, d.currency, FR)]] : []), ...(t.paid ? [[L('Paid', 'Payé'), '−' + money(t.paid, d.currency, FR)]] : []), [L('Balance due', 'Solde dû'), money(t.balance, d.currency, FR), true]]),
       d.notes ? el('p', {class: 'pre muted'}, d.notes) : null));
 }
 

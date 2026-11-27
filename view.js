@@ -153,7 +153,7 @@ function renderInvoice(d) {
       el('p', {class: 'muted'}, L('Issued ', 'Émise le ') + day(d.issuedOn) + L(' · Due ', ' · Échéance le ') + day(d.dueOn)), sellerBlock(d.seller)),
     t.balance > 0 && pay.length ? el('div', {class: 'card'}, el('h2', {}, L('How to pay', 'Comment payer')), pay, el('p', {class: 'muted'}, FR ? 'Les paiements sont versés directement à ' + d.seller.name + '. Indiquez ' + d.number + ' comme référence.' : 'Payments go directly to ' + d.seller.name + '. Include ' + d.number + ' as the reference.')) : null,
     el('div', {class: 'card'}, el('h2', {}, L('Details', 'Détails')), linesTable(d.lines, d.currency),
-      totalsBlock([[L('Subtotal', 'Sous-total'), money(t.subtotal, d.currency, FR)], ...taxRows(d.taxBp / 100, t.tax, '', d.currency), [L('Total', 'Total'), money(t.total, d.currency, FR)], ...(t.credits > 0 ? [[L('Credit notes', 'Notes de crédit'), '−' + money(t.credits, d.currency, FR)]] : []), ...(t.paid ? [[L('Paid', 'Payé'), '−' + money(t.paid, d.currency, FR)]] : []), [L('Balance due', 'Solde dû'), money(t.balance, d.currency, FR), true]]),
+      totalsBlock([[L('Subtotal', 'Sous-total'), money(t.subtotal, d.currency, FR)], ...taxRows(d.taxBp / 100, t.tax, typeof d.taxLocation === 'string' ? d.taxLocation : '', d.currency), [L('Total', 'Total'), money(t.total, d.currency, FR)], ...(t.credits > 0 ? [[L('Credit notes', 'Notes de crédit'), '−' + money(t.credits, d.currency, FR)]] : []), ...(t.paid ? [[L('Paid', 'Payé'), '−' + money(t.paid, d.currency, FR)]] : []), [L('Balance due', 'Solde dû'), money(t.balance, d.currency, FR), true]]),
       d.notes ? el('p', {class: 'pre muted'}, d.notes) : null));
 }
 
